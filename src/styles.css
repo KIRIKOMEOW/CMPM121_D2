@@ -1,21 +1,81 @@
 :root {
-  font-family: system-ui, sans-serif;
-  color: #22372b;
-  background: #f5f7f3;
+  --sky-top: #e3f1ff;
+  --sky-mid: #f5faff;
+  --cream: #fffaf1;
+  --surface: #ffffff;
+  --surface-soft: #f3f8fe;
+  --line: #e2eaf3;
+  --ink: #2d3a4a;
+  --ink-muted: #6b7a8c;
+  --ink-faint: #b4bfcb;
+  --rose: #d4436a;
+  --rose-hover: #b8355a;
+  --rose-soft: #fde9ef;
+  --petal: #f2a2b8;
+  --sky: #8ec3ec;
+  --sun: #f7c948;
+  --sun-soft: #fff5d6;
+  --danger: #c0392b;
+  --radius-xl: 24px;
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgb(45 58 74 / 4%), 0 12px 32px rgb(74 120 170 / 10%);
+  --shadow-canvas: 0 1px 3px rgb(45 58 74 / 6%), 0 8px 20px rgb(74 120 170 / 10%);
+  --focus-ring: 0 0 0 3px rgb(212 67 106 / 20%);
+
+  color-scheme: light;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--sky-mid);
 }
 
 body {
+  min-height: 100vh;
   margin: 0;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cg opacity='.32'%3E%3Cg transform='translate(34 38)' fill='%23f2a2b8'%3E%3Ccircle cy='-6' r='5'/%3E%3Ccircle cx='5.7' cy='-1.9' r='5'/%3E%3Ccircle cx='3.5' cy='4.9' r='5'/%3E%3Ccircle cx='-3.5' cy='4.9' r='5'/%3E%3Ccircle cx='-5.7' cy='-1.9' r='5'/%3E%3Ccircle r='3.4' fill='%23f7c948'/%3E%3C/g%3E%3Cg transform='translate(128 118) scale(.75)' fill='%23c3b4ee'%3E%3Ccircle cy='-6' r='5'/%3E%3Ccircle cx='5.7' cy='-1.9' r='5'/%3E%3Ccircle cx='3.5' cy='4.9' r='5'/%3E%3Ccircle cx='-3.5' cy='4.9' r='5'/%3E%3Ccircle cx='-5.7' cy='-1.9' r='5'/%3E%3Ccircle r='3.4' fill='%23fff1b8'/%3E%3C/g%3E%3Ccircle cx='140' cy='36' r='2.5' fill='%23f7c948'/%3E%3Ccircle cx='52' cy='142' r='2' fill='%238ec3ec'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 45%, var(--cream)
+    100%);
+  background-attachment: fixed;
 }
 
 #app {
-  max-width: 1120px;
-  padding: 24px;
+  max-width: 1160px;
+  padding: 40px 24px;
   margin: auto;
 }
 
 h1 {
-  margin-top: 0;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 0 0 6px;
+  font-size: 2rem;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+}
+
+h1::before {
+  content: "🌷";
+  font-size: 1.8rem;
+}
+
+#app > p {
+  margin: 0 0 28px;
+  color: var(--ink-muted);
+}
+
+h2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+}
+
+h2::before {
+  content: "🌼";
 }
 
 p {
@@ -24,14 +84,55 @@ p {
 
 .workspace {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
 }
 
 aside {
-  padding: 16px;
-  background: #e8eee3;
-  border-radius: 8px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+/* Airmail-style striped edge so the drawing area reads as a postcard. */
+.workspace > section {
+  padding: 18px;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    repeating-linear-gradient(
+    -45deg,
+    var(--petal) 0 14px,
+    var(--surface) 14px 22px,
+    var(--sky) 22px 36px,
+    var(--surface) 36px 44px
+  )
+    border-box;
+  border: 6px solid transparent;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+aside > p {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  background: var(--sun-soft);
+  border-radius: var(--radius-pill);
+}
+
+aside > p::before {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  content: "";
+  background: var(--sun);
+  border-radius: 50%;
 }
 
 .tool-palette,
@@ -41,18 +142,87 @@ aside {
   gap: 8px;
 }
 
-.controls {
+.tool-palette {
   margin-bottom: 12px;
 }
 
+.tool-palette:empty {
+  display: none;
+}
+
+.workspace > section > .controls {
+  gap: 4px;
+  padding: 6px;
+  margin-bottom: 16px;
+  background: var(--surface-soft);
+  border-radius: var(--radius-lg);
+}
+
+.workspace > section > .controls > button {
+  background: transparent;
+  border-color: transparent;
+}
+
+.workspace > section > .controls > button:hover:not(:disabled) {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+.workspace > section > .controls > button:last-child {
+  margin-left: auto;
+}
+
 button {
-  padding: 8px 12px;
+  padding: 8px 16px;
   font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s,
+    box-shadow 0.15s, transform 0.1s;
+}
+
+button:hover:not(:disabled) {
+  background: var(--surface-soft);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+button:disabled {
+  color: var(--ink-faint);
+  cursor: not-allowed;
 }
 
 button[aria-pressed="true"] {
-  outline: 2px solid #36683d;
-  outline-offset: 2px;
+  color: var(--rose);
+  background: var(--rose-soft);
+  border-color: var(--rose);
+}
+
+.workspace > section > .controls > button:last-child,
+.tool-form button[type="submit"] {
+  color: white;
+  background: var(--rose);
+  border-color: var(--rose);
+  box-shadow: 0 4px 12px rgb(212 67 106 / 25%);
+}
+
+.workspace > section > .controls > button:last-child:hover:not(:disabled),
+.tool-form button[type="submit"]:hover {
+  background: var(--rose-hover);
+  border-color: var(--rose-hover);
 }
 
 .tool-form,
@@ -63,12 +233,26 @@ button[aria-pressed="true"] {
 }
 
 .tool-form {
+  gap: 12px;
   margin-top: 16px;
+  padding: 14px;
+  background: var(--surface-soft);
+  border-radius: var(--radius-lg);
+}
+
+.tool-form label {
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
 }
 
 .tool-form h3,
 .form-error {
   margin: 0;
+}
+
+.tool-form h3 {
+  font-size: 1rem;
 }
 
 .tool-fields[hidden] {
@@ -80,16 +264,39 @@ button[aria-pressed="true"] {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 6px;
+  padding: 8px 10px;
   font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.tool-form input:focus,
+.tool-form select:focus {
+  outline: none;
+  border-color: var(--rose);
+  box-shadow: var(--focus-ring);
 }
 
 .tool-form input[type="color"] {
-  height: 36px;
+  height: 40px;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.tool-form .controls button {
+  flex: 1;
 }
 
 .form-error {
-  color: #9c2525;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.form-error:empty {
+  display: none;
 }
 
 canvas {
@@ -97,14 +304,38 @@ canvas {
   width: 100%;
   height: auto;
   box-sizing: border-box;
-  border: 1px solid #788a78;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   background: white;
+  box-shadow: var(--shadow-canvas);
   cursor: crosshair;
   touch-action: none;
 }
 
+.workspace > section > p {
+  margin: 14px 0 0;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+
+.workspace > section > p:empty {
+  display: none;
+}
+
 @media (max-width: 720px) {
+  #app {
+    padding: 24px 16px;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
   .workspace {
     grid-template-columns: 1fr;
+  }
+
+  .workspace > section {
+    padding: 12px;
   }
 }
