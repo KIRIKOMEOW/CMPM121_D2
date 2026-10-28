@@ -62,6 +62,8 @@ canvas {
   box-sizing: border-box;
   border: 1px solid #788a78;
   background: white;
+  cursor: crosshair;
+  touch-action: none;
 }
 
 @media (max-width: 720px) {
