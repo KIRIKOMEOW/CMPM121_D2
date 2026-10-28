@@ -55,6 +55,43 @@ button[aria-pressed="true"] {
   outline-offset: 2px;
 }
 
+.tool-form,
+.tool-fields,
+.tool-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.tool-form {
+  margin-top: 16px;
+}
+
+.tool-form h3,
+.form-error {
+  margin: 0;
+}
+
+.tool-fields[hidden] {
+  display: none;
+}
+
+.tool-form input,
+.tool-form select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 6px;
+  font: inherit;
+}
+
+.tool-form input[type="color"] {
+  height: 36px;
+}
+
+.form-error {
+  color: #9c2525;
+}
+
 canvas {
   display: block;
   width: 100%;

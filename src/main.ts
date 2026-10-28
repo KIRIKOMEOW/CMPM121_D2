@@ -5,15 +5,167 @@ import {
   createToolRegistry,
   DOCUMENT_SETTINGS,
   EXPORT_SCALE,
+  exportPng,
   renderDocument,
 } from "./core.ts";
 import { PRESET_TOOLS } from "./presets.ts";
 import type {
   InteractionState,
+  MountCustomToolForm,
   PaletteRenderer,
   ToolDefinition,
 } from "./types.ts";
 import { renderToolPalette } from "./palette.ts";
+
+export const mountCustomToolForm: MountCustomToolForm = (options) => {
+  const form = document.createElement("form");
+  form.className = "tool-form";
+  form.noValidate = true;
+  const heading = document.createElement("h3");
+  heading.textContent = "New Tool";
+
+  function field(label: string, control: HTMLElement): HTMLLabelElement {
+    const element = document.createElement("label");
+    element.append(document.createTextNode(label), control);
+    return element;
+  }
+
+  const name = document.createElement("input");
+  name.type = "text";
+  name.maxLength = 40;
+  const kind = document.createElement("select");
+  for (const [value, label] of [["marker", "Marker"], ["sticker", "Sticker"]]) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    kind.append(option);
+  }
+
+  const color = document.createElement("input");
+  color.type = "color";
+  color.defaultValue = "#356b3f";
+  const width = document.createElement("input");
+  width.type = "number";
+  width.min = "1";
+  width.max = "40";
+  width.step = "1";
+  width.defaultValue = "4";
+  const markerFields = document.createElement("div");
+  markerFields.className = "tool-fields";
+  markerFields.append(field("Color", color), field("Width", width));
+
+  const text = document.createElement("input");
+  text.type = "text";
+  text.maxLength = 40;
+  const size = document.createElement("input");
+  size.type = "number";
+  size.min = "8";
+  size.max = "128";
+  size.step = "1";
+  size.defaultValue = "40";
+  const stickerFields = document.createElement("div");
+  stickerFields.className = "tool-fields";
+  stickerFields.append(field("Text or Emoji", text), field("Size", size));
+
+  const error = document.createElement("p");
+  error.className = "form-error";
+  error.setAttribute("role", "alert");
+  const actions = document.createElement("div");
+  actions.className = "controls";
+  const add = document.createElement("button");
+  add.type = "submit";
+  add.textContent = "Add Tool";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.textContent = "Cancel";
+  actions.append(add, cancel);
+  form.append(
+    heading,
+    field("Name", name),
+    field("Tool Type", kind),
+    markerFields,
+    stickerFields,
+    error,
+    actions,
+  );
+  options.container.replaceChildren(form);
+
+  function updateFields(): void {
+    markerFields.hidden = kind.value !== "marker";
+    stickerFields.hidden = kind.value !== "sticker";
+    error.textContent = "";
+  }
+
+  function reset(): void {
+    form.reset();
+    updateFields();
+  }
+
+  function submit(event: SubmitEvent): void {
+    event.preventDefault();
+    const label = name.value.trim();
+    if (!label) {
+      error.textContent = "Enter a tool name.";
+      name.focus();
+      return;
+    }
+    const id = `custom-${crypto.randomUUID()}`;
+    if (kind.value === "marker") {
+      const brushWidth = Number(width.value);
+      if (!Number.isInteger(brushWidth) || brushWidth < 1 || brushWidth > 40) {
+        error.textContent = "Choose a width from 1 to 40.";
+        width.focus();
+        return;
+      }
+      options.onCreate({
+        id,
+        label,
+        kind: "marker",
+        color: color.value,
+        width: brushWidth,
+      });
+    } else {
+      const content = text.value.trim();
+      const fontSize = Number(size.value);
+      if (!content) {
+        error.textContent = "Enter sticker text or an emoji.";
+        text.focus();
+        return;
+      }
+      if (!Number.isInteger(fontSize) || fontSize < 8 || fontSize > 128) {
+        error.textContent = "Choose a size from 8 to 128.";
+        size.focus();
+        return;
+      }
+      options.onCreate({
+        id,
+        label,
+        kind: "sticker",
+        text: content,
+        size: fontSize,
+      });
+    }
+    reset();
+  }
+
+  function cancelCreation(): void {
+    reset();
+    options.onCancel?.();
+  }
+
+  kind.addEventListener("change", updateFields);
+  form.addEventListener("submit", submit);
+  cancel.addEventListener("click", cancelCreation);
+  updateFields();
+  return {
+    dispose() {
+      kind.removeEventListener("change", updateFields);
+      form.removeEventListener("submit", submit);
+      cancel.removeEventListener("click", cancelCreation);
+      options.container.replaceChildren();
+    },
+  };
+};
 
 export function mountSketchpad(
   app: HTMLElement,
@@ -43,7 +195,10 @@ export function mountSketchpad(
   palette.className = "tool-palette";
   const selection = document.createElement("p");
   selection.setAttribute("aria-live", "polite");
-  sidebar.append(toolsHeading, palette, selection);
+  const customToolContainer = document.createElement("div");
+  customToolContainer.id = "custom-tool-form";
+  customToolContainer.hidden = true;
+  sidebar.append(toolsHeading, palette, selection, customToolContainer);
 
   const drawingArea = document.createElement("section");
   const controls = document.createElement("div");
@@ -59,8 +214,10 @@ export function mountSketchpad(
   const undoButton = addButton("Undo", true);
   const redoButton = addButton("Redo", true);
   const redrawButton = addButton("Redraw");
-  addButton("Create Tool", true);
-  addButton("Export PNG", true);
+  const createToolButton = addButton("Create Tool");
+  createToolButton.setAttribute("aria-controls", customToolContainer.id);
+  createToolButton.setAttribute("aria-expanded", "false");
+  const exportButton = addButton("Export PNG");
 
   const canvas = document.createElement("canvas");
   canvas.width = DOCUMENT_SETTINGS.width;
@@ -73,8 +230,10 @@ export function mountSketchpad(
   dimensions.textContent = `Canvas: ${canvas.width} × ${canvas.height}. ` +
     `PNG export: ${canvas.width * EXPORT_SCALE} × ${
       canvas.height * EXPORT_SCALE
-    }.`;
-  drawingArea.append(controls, canvas, dimensions);
+    }. White background.`;
+  const exportStatus = document.createElement("p");
+  exportStatus.setAttribute("role", "status");
+  drawingArea.append(controls, canvas, dimensions, exportStatus);
   layout.append(sidebar, drawingArea);
   app.replaceChildren(heading, note, layout);
 
@@ -139,9 +298,54 @@ export function mountSketchpad(
     redraw();
   }
 
+  function closeToolForm(): void {
+    customToolContainer.hidden = true;
+    createToolButton.setAttribute("aria-expanded", "false");
+    createToolButton.focus();
+  }
+
+  function openToolForm(): void {
+    input.cancelGesture();
+    customToolContainer.hidden = false;
+    createToolButton.setAttribute("aria-expanded", "true");
+    customToolContainer.querySelector("input")?.focus();
+  }
+
+  const customToolForm = mountCustomToolForm({
+    container: customToolContainer,
+    onCreate(tool) {
+      input.cancelGesture();
+      tools.add(tool);
+      interaction.selectedToolId = tool.id;
+      refreshPalette();
+      closeToolForm();
+    },
+    onCancel: closeToolForm,
+  });
+
+  async function downloadPng(): Promise<void> {
+    exportButton.disabled = true;
+    exportStatus.textContent = "Preparing PNG...";
+    try {
+      await exportPng(
+        { ...DOCUMENT_SETTINGS, commands: history.getState().commands },
+        renderDocument,
+      );
+      exportStatus.textContent = "Exported PNG with a white background.";
+    } catch (error) {
+      exportStatus.textContent = error instanceof Error
+        ? error.message
+        : "Could not export the PNG image.";
+    } finally {
+      exportButton.disabled = false;
+    }
+  }
+
   undoButton.addEventListener("click", undo);
   redoButton.addEventListener("click", redo);
   redrawButton.addEventListener("click", redraw);
+  createToolButton.addEventListener("click", openToolForm);
+  exportButton.addEventListener("click", downloadPng);
   refreshPalette();
   redraw();
 
@@ -150,6 +354,9 @@ export function mountSketchpad(
     undoButton.removeEventListener("click", undo);
     redoButton.removeEventListener("click", redo);
     redrawButton.removeEventListener("click", redraw);
+    createToolButton.removeEventListener("click", openToolForm);
+    exportButton.removeEventListener("click", downloadPng);
+    customToolForm.dispose();
     app.replaceChildren();
   };
 }

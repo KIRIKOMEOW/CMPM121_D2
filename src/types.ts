@@ -127,6 +127,7 @@ export interface ToolRegistry {
 export interface CustomToolOptions {
   readonly container: HTMLElement;
   readonly onCreate: (tool: ToolDefinition) => void;
+  readonly onCancel?: () => void;
 }
 
 export type MountCustomToolForm = (

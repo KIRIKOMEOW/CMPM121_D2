@@ -4,6 +4,7 @@ import type {
   DocumentRenderer,
   DocumentSettings,
   DrawingCommand,
+  ExportPng,
   HistoryStore,
   MarkerTool,
   Point,
@@ -153,6 +154,40 @@ export const renderDocument: DocumentRenderer = (
     preview?.render(context);
   } finally {
     context.restore();
+  }
+};
+
+export const exportPng: ExportPng = async (
+  drawing,
+  renderer,
+  scale = EXPORT_SCALE,
+) => {
+  if (!Number.isFinite(scale) || scale < 2) {
+    throw new Error("Export scale must be at least 2.");
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(drawing.width * scale);
+  canvas.height = Math.round(drawing.height * scale);
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas 2D is not available.");
+  renderer(context, drawing);
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((result) => {
+      if (result) resolve(result);
+      else reject(new Error("Could not create the PNG image."));
+    }, "image/png");
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "garden-postcard.png";
+  document.body.append(link);
+  try {
+    link.click();
+  } finally {
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 };
 
