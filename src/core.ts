@@ -3,6 +3,8 @@ import type {
   CommandFactory,
   DocumentRenderer,
   DocumentSettings,
+  DrawingCommand,
+  HistoryStore,
   MarkerTool,
   Point,
   StickerCommand,
@@ -38,6 +40,32 @@ export function createToolRegistry(
 
   for (const tool of initialTools) registry.add(tool);
   return registry;
+}
+
+export function createHistoryStore(): HistoryStore {
+  const commands: DrawingCommand[] = [];
+  let cursor = 0;
+
+  return {
+    getState() {
+      return Object.freeze({
+        commands: Object.freeze(commands.slice(0, cursor)),
+        canUndo: cursor > 0,
+        canRedo: cursor < commands.length,
+      });
+    },
+    commit(command) {
+      commands.splice(cursor);
+      commands.push(command);
+      cursor = commands.length;
+    },
+    undo() {
+      if (cursor > 0) cursor--;
+    },
+    redo() {
+      if (cursor < commands.length) cursor++;
+    },
+  };
 }
 
 export function createCommandFactory(): CommandFactory {

@@ -1,6 +1,7 @@
 import {
   attachCanvasInput,
   createCommandFactory,
+  createHistoryStore,
   createToolRegistry,
   DOCUMENT_SETTINGS,
   EXPORT_SCALE,
@@ -8,7 +9,6 @@ import {
 } from "./core.ts";
 import { PRESET_TOOLS } from "./presets.ts";
 import type {
-  DrawingCommand,
   InteractionState,
   PaletteRenderer,
   ToolDefinition,
@@ -25,7 +25,7 @@ export function mountSketchpad(
     selectedToolId: tools.getAll()[0]?.id ?? null,
     preview: null,
   };
-  let committed: readonly DrawingCommand[] = [];
+  const history = createHistoryStore();
 
   const heading = document.createElement("h1");
   heading.textContent = "Garden Postcard Sketchpad";
@@ -48,17 +48,19 @@ export function mountSketchpad(
   const drawingArea = document.createElement("section");
   const controls = document.createElement("div");
   controls.className = "controls";
-  let redrawButton: HTMLButtonElement | undefined;
-  for (
-    const label of ["Undo", "Redo", "Redraw", "Create Tool", "Export PNG"]
-  ) {
+  function addButton(label: string, disabled = false): HTMLButtonElement {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = label;
-    button.disabled = label !== "Redraw";
-    if (label === "Redraw") redrawButton = button;
+    button.disabled = disabled;
     controls.append(button);
+    return button;
   }
+  const undoButton = addButton("Undo", true);
+  const redoButton = addButton("Redo", true);
+  const redrawButton = addButton("Redraw");
+  addButton("Create Tool", true);
+  addButton("Export PNG", true);
 
   const canvas = document.createElement("canvas");
   canvas.width = DOCUMENT_SETTINGS.width;
@@ -77,11 +79,14 @@ export function mountSketchpad(
   app.replaceChildren(heading, note, layout);
 
   function redraw(): void {
+    const state = history.getState();
     renderDocument(
       context!,
-      { ...DOCUMENT_SETTINGS, commands: committed },
+      { ...DOCUMENT_SETTINGS, commands: state.commands },
       interaction.preview,
     );
+    undoButton.disabled = !state.canUndo;
+    redoButton.disabled = !state.canRedo;
   }
 
   const input = attachCanvasInput({
@@ -97,7 +102,7 @@ export function mountSketchpad(
       redraw();
     },
     onCommit(command) {
-      committed = Object.freeze([...committed, command]);
+      history.commit(command);
       redraw();
     },
   });
@@ -122,13 +127,29 @@ export function mountSketchpad(
       : "No tool selected.";
   }
 
-  redrawButton!.addEventListener("click", redraw);
+  function undo(): void {
+    input.cancelGesture();
+    history.undo();
+    redraw();
+  }
+
+  function redo(): void {
+    input.cancelGesture();
+    history.redo();
+    redraw();
+  }
+
+  undoButton.addEventListener("click", undo);
+  redoButton.addEventListener("click", redo);
+  redrawButton.addEventListener("click", redraw);
   refreshPalette();
   redraw();
 
   return () => {
     input.dispose();
-    redrawButton!.removeEventListener("click", redraw);
+    undoButton.removeEventListener("click", undo);
+    redoButton.removeEventListener("click", redo);
+    redrawButton.removeEventListener("click", redraw);
     app.replaceChildren();
   };
 }
