@@ -214,6 +214,9 @@ export function mountSketchpad(
   const undoButton = addButton("Undo", true);
   const redoButton = addButton("Redo", true);
   const redrawButton = addButton("Redraw");
+  redrawButton.title = "Repaint the current artwork without removing it.";
+  const clearButton = addButton("Clear", true);
+  clearButton.title = "Clear the artwork. Undo restores it.";
   const createToolButton = addButton("Create Tool");
   createToolButton.setAttribute("aria-controls", customToolContainer.id);
   createToolButton.setAttribute("aria-expanded", "false");
@@ -246,6 +249,7 @@ export function mountSketchpad(
     );
     undoButton.disabled = !state.canUndo;
     redoButton.disabled = !state.canRedo;
+    clearButton.disabled = state.commands.length === 0;
   }
 
   const input = attachCanvasInput({
@@ -298,6 +302,12 @@ export function mountSketchpad(
     redraw();
   }
 
+  function clear(): void {
+    input.cancelGesture();
+    history.clear();
+    redraw();
+  }
+
   function closeToolForm(): void {
     customToolContainer.hidden = true;
     createToolButton.setAttribute("aria-expanded", "false");
@@ -344,6 +354,7 @@ export function mountSketchpad(
   undoButton.addEventListener("click", undo);
   redoButton.addEventListener("click", redo);
   redrawButton.addEventListener("click", redraw);
+  clearButton.addEventListener("click", clear);
   createToolButton.addEventListener("click", openToolForm);
   exportButton.addEventListener("click", downloadPng);
   refreshPalette();
@@ -354,6 +365,7 @@ export function mountSketchpad(
     undoButton.removeEventListener("click", undo);
     redoButton.removeEventListener("click", redo);
     redrawButton.removeEventListener("click", redraw);
+    clearButton.removeEventListener("click", clear);
     createToolButton.removeEventListener("click", openToolForm);
     exportButton.removeEventListener("click", downloadPng);
     customToolForm.dispose();

@@ -44,27 +44,46 @@ export function createToolRegistry(
 }
 
 export function createHistoryStore(): HistoryStore {
-  const commands: DrawingCommand[] = [];
+  type Action =
+    | { readonly kind: "add"; readonly command: DrawingCommand }
+    | { readonly kind: "clear" };
+  const actions: Action[] = [];
   let cursor = 0;
+
+  function activeCommands(): DrawingCommand[] {
+    const commands: DrawingCommand[] = [];
+    for (const action of actions.slice(0, cursor)) {
+      if (action.kind === "clear") commands.length = 0;
+      else commands.push(action.command);
+    }
+    return commands;
+  }
+
+  function record(action: Action): void {
+    actions.splice(cursor);
+    actions.push(action);
+    cursor = actions.length;
+  }
 
   return {
     getState() {
       return Object.freeze({
-        commands: Object.freeze(commands.slice(0, cursor)),
+        commands: Object.freeze(activeCommands()),
         canUndo: cursor > 0,
-        canRedo: cursor < commands.length,
+        canRedo: cursor < actions.length,
       });
     },
     commit(command) {
-      commands.splice(cursor);
-      commands.push(command);
-      cursor = commands.length;
+      record({ kind: "add", command });
+    },
+    clear() {
+      if (activeCommands().length > 0) record({ kind: "clear" });
     },
     undo() {
       if (cursor > 0) cursor--;
     },
     redo() {
-      if (cursor < commands.length) cursor++;
+      if (cursor < actions.length) cursor++;
     },
   };
 }

@@ -79,10 +79,11 @@ export interface HistoryState {
   readonly canRedo: boolean;
 }
 
-// Only commit() discards a redo branch; one completed gesture is one commit.
+// Drawing commits and nonempty clears discard redo; each is one action.
 export interface HistoryStore {
   getState(): HistoryState;
   commit(command: DrawingCommand): void;
+  clear(): void;
   undo(): void;
   redo(): void;
 }
