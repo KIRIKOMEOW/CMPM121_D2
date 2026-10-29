@@ -14,6 +14,7 @@ interface SelectionOptions {
   history: HistoryStore;
   isEnabled(): boolean;
   onChange(): void;
+  onEditText?(command: StickerCommand, index: number): void;
   onSelection?(command: ElementCommand | null, index: number | null): void;
   onPreview(commands: readonly DrawingCommand[]): void;
 }
@@ -275,6 +276,18 @@ export function mountSelection(options: SelectionOptions) {
       clear();
     }
   }
+  function editText(event: MouseEvent) {
+    if (!options.isEnabled()) return;
+    const command = current();
+    if (
+      command?.kind === "sticker" && command.align === "left" && index !== null
+    ) {
+      event.preventDefault();
+      options.onEditText?.(command, index);
+    }
+  }
+  canvas.addEventListener("dblclick", editText);
+  box.addEventListener("dblclick", editText);
   canvas.addEventListener("pointerdown", select);
   box.addEventListener("pointerdown", down);
   box.addEventListener("pointermove", move);
@@ -294,6 +307,8 @@ export function mountSelection(options: SelectionOptions) {
     refresh,
     clear,
     dispose() {
+      canvas.removeEventListener("dblclick", editText);
+      box.removeEventListener("dblclick", editText);
       observer.disconnect();
       clear();
       box.remove();

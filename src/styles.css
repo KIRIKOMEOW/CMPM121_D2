@@ -883,3 +883,161 @@ canvas {
   height: 28px;
   padding: 2px;
 }
+
+/* Template choices live to the left; all creation tools stay to the right. */
+#app {
+  max-width: 1480px;
+}
+.workspace {
+  grid-template-columns: 156px minmax(0, 1fr) 250px;
+}
+.template-panel {
+  padding: 14px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+.template-panel label {
+  gap: 8px;
+}
+.template-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.template-tiles button {
+  padding: 3px;
+  border-radius: 7px;
+  overflow: hidden;
+}
+.template-tiles canvas {
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+  border: 0;
+  box-shadow: none;
+}
+.tool-dock .tool-palette {
+  flex-direction: column;
+}
+.brush-settings {
+  padding: 8px 0 12px;
+}
+.palette-group[aria-label="Brushes"] .palette-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.palette-group[aria-label="Brushes"] .palette-tool {
+  width: 100%;
+  height: 48px;
+}
+.tool-preview canvas {
+  width: 68px;
+  height: 28px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.text-tools > button {
+  border-radius: 8px;
+  width: 100%;
+  text-align: left;
+}
+.text-context-toolbar {
+  position: static;
+  margin: 0 0 12px;
+  grid-template-columns: minmax(80px, 1fr) 60px 40px;
+}
+.postcode-fields {
+  position: absolute;
+  left: 6.875%;
+  top: 7.5%;
+  width: 25.375%;
+  height: 4.6667%;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 3.448%;
+  z-index: 3;
+}
+.postcode-fields[hidden] {
+  display: none;
+}
+.postcode-fields input {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  color: transparent;
+  caret-color: #39352f;
+  font-size: 12px;
+  outline: none;
+  border-radius: 0;
+}
+.postcode-fields input:focus {
+  outline: 1px dashed var(--rose);
+  background: rgb(255 255 255 / 15%);
+}
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: 120px minmax(0, 1fr) 210px;
+  }
+}
+@media (max-width: 800px) {
+  #app {
+    padding: 20px 10px;
+  }
+  .workspace {
+    grid-template-columns: 96px minmax(0, 1fr) 174px;
+    gap: 8px;
+  }
+  .template-panel {
+    padding: 8px;
+  }
+  .tool-dock {
+    padding: 8px;
+  }
+  .tool-preview canvas {
+    width: 52px;
+  }
+  .workspace > section {
+    padding: 8px;
+  }
+}
+@media (max-width: 520px) {
+  .workspace {
+    grid-template-columns: 90px minmax(0, 1fr);
+  }
+  .tool-dock {
+    grid-column: 1/-1;
+  }
+}
+.template-group {
+  display: grid;
+  gap: 8px;
+  font-size: 0.73rem;
+  color: var(--ink-muted);
+}
+
+.workspace > .template-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.template-tiles button {
+  border-width: 2px;
+  padding: 2px;
+  background: #fff;
+}
+
+.template-tiles button:hover {
+  border-color: var(--rose);
+}
+.template-tiles button[aria-pressed="true"] {
+  box-shadow: 0 0 0 1px var(--rose);
+}

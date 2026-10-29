@@ -4,13 +4,14 @@
 
 ## Use
 
-The postcard is on the left and its editing tools are on the right (stacked on very small screens). Clear and Export PNG are above the postcard. Undo/Redo, Select, Add text, and Import PNG are in the editing toolbar.
+Templates are on the left, the postcard is in the middle, and creation tools are on the right (reflowed on small screens). Clear and Export PNG are above the postcard. Undo/Redo, Select, Add text, and Import PNG are in the editing toolbar.
 
-- **Decorations:** choose from seven plain/dotted papers, three optional borders, and three optional writing layouts. Each change supports Undo/Redo. Four original vector postal motifs can be freely combined with emoji and imported PNGs.
-- **Add text:** a text box appears on the canvas immediately. Type text or emoji; finish with Cmd/Ctrl+Enter or by clicking elsewhere. Select the resulting text to change its wording, font family, size, or color using the contextual toolbar. Available fonts use local/system fallbacks.
+- **Decorations:** use image tiles to choose from eleven papers (including rice-paper fibers, linen, leaf watermarks, and vintage grain), three optional borders, and three optional writing layouts. Each change supports Undo/Redo. Eight original vector postal motifs and four illustrated postage stamps can be freely combined with emoji and imported PNGs.
+- **Add text:** a text box appears on the canvas immediately. Type text or emoji; finish with Cmd/Ctrl+Enter or by clicking elsewhere. Single-click selects text for dragging. Double-click edits the existing text at its original position; there is no separate text-content field. Font family, size, and color controls appear above the canvas. Available fonts use local/system fallbacks.
 - **Arrange:** newly placed text, emoji, and image stamps are selected automatically. Drag the selection to move it, drag the lower-right handle to resize, or drag the round handle to rotate. Click × or press Delete/Backspace to remove it. Use Select (V) to select another element. All completed edits support Undo/Redo; Esc cancels an active transform. Freehand strokes are edited with the eraser rather than individual selection boxes.
-- **Brushes:** choose a brush or eraser, adjust its size/color, then draw. Each brush remembers its settings during the session. The + beside Brushes saves the current brush as a reusable preset. The eraser reveals the current paper and writing layout.
+- **Brushes:** color and size controls sit directly under the Brushes heading, above visual presets. Choose fine, broad, soft airbrush, pen-pressure ink, Bling stars, Twinkle trail, or eraser, then draw. Pressure ink uses Pointer Events pressure on pen devices; a mouse uses fixed 0.65 pressure. Physical pen hardware has not been tested in this environment. Each brush remembers its settings during the session. The + beside Brushes saves the current brush as a reusable preset. The eraser reveals the current paper and writing layout.
 - **Emoji:** 22 presets are included. The + beside Emoji opens a field where you can type your own emoji and save it as a reusable stamp.
+- **Postal code:** choose None, Red, Black, or Deep gold in the left template panel. Six fixed boxes appear near the top of the postcard; type directly into them or paste a six-character code. Changing the frame color preserves the entered code. Undo/Redo and export include postal codes.
 - **Import PNG:** create a reusable stamp from a local PNG (up to 10 MB and 16 million pixels). Its initial longest side is capped at 120 document pixels; resize it on the canvas. Imported images remain on your device.
 - **Export:** replay the current document into a separate 1600 × 1200 canvas. Paper, borders, layout, text, transformed stamps, and erasing are included; selection boxes, text editors, and toolbars are excluded.
 
@@ -39,3 +40,7 @@ Preset and palette implementation assisted by Codex (OpenAI GPT-6). Commit trail
 ## Revision verification
 
 The dock revision was checked in a local browser: placing an emoji, erasing its center and undoing the erase, creating a text tool, importing and placing a transparent PNG, exporting a 1600 × 1200 PNG, and rejecting a file with a `.png` extension but invalid contents. Formatting, lint, type checking, and production build run through `deno task ci`. Imported stamps and text remain session-only, like all other artwork.
+
+## Brush asset provenance
+
+The Bling and Twinkle brushes use `star_04.png` and `star_09.png` from **Kenney Particle Pack 1.1**, licensed **CC0**. Original asset page: https://kenney.nl/assets/particle-pack . Download mirror used: https://github.com/Calinou/kenney-particle-pack/tree/ab7086639ee73be31abd87feb21bf1402d4e8144/addons/kenney_particle_pack . The supplied license is preserved in `src/assets/brushes/LICENSE.txt`. These PNG tips are tinted and stamped along retained strokes, rather than importing Photoshop-specific ABR files. Soft/pressure rendering, paper textures, thumbnail layouts, postage artwork, and garden seals are project-authored. Sparkle scatter is deterministic so redraw and export match.

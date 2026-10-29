@@ -47,3 +47,56 @@ Deno.test("postcard edits preserve transform history and discard stale redo", ()
     "Undo Clear must restore paper and content",
   );
 });
+
+Deno.test("pen pressure is retained and changes the rendered brush radius", () => {
+  const points = [{ x: 0, y: 0, pressure: 0.1 }, { x: 30, y: 0, pressure: 1 }];
+  const command = createCommandFactory().createStroke(points, {
+    id: "pressure",
+    label: "Pressure",
+    kind: "marker",
+    color: "#123456",
+    width: 20,
+    brush: "pressure",
+  });
+  points[0].pressure = 1;
+  assert(
+    command.points[0].pressure === 0.1,
+    "Commands must snapshot pen pressure",
+  );
+  const radii: number[] = [];
+  const context = {
+    save() {},
+    restore() {},
+    beginPath() {},
+    fill() {},
+    arc(_x: number, _y: number, radius: number) {
+      radii.push(radius);
+    },
+  } as unknown as CanvasRenderingContext2D;
+  command.render(context);
+  assert(
+    Math.min(...radii) < 2 && Math.max(...radii) > 9,
+    "Pressure must control stroke thickness",
+  );
+});
+
+Deno.test("postal code renders six fixed boxes and retained characters", () => {
+  const boxes: number[][] = [];
+  const labels: string[] = [];
+  const ctx = {
+    save() {},
+    restore() {},
+    strokeRect(...args: number[]) {
+      boxes.push(args);
+    },
+    fillText(value: string) {
+      labels.push(value);
+    },
+  } as unknown as CanvasRenderingContext2D;
+  decoration("postcode", "Red", "310000").render(ctx);
+  assert(boxes.length === 6, "Postal code must contain six frames");
+  assert(
+    labels.slice(0, 6).join("") === "310000",
+    "Export must include the actual postal code",
+  );
+});

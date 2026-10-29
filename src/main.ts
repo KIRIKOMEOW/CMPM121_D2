@@ -1,9 +1,11 @@
+import { sparkleBrushes } from "./brushes.ts";
 import {
   BORDER_STYLES,
   decoration,
   LAYOUT_STYLES,
   PAPER_STYLES,
   postalTools,
+  templatePreview,
 } from "./decorations.ts";
 import { mountSelection } from "./selection.ts";
 import {
@@ -169,7 +171,7 @@ export function mountSketchpad(
   const textButton = document.createElement("button");
   textButton.type = "button";
   textButton.textContent = "＋ Add text";
-  dockActions.append(textButton);
+
   sidebar.prepend(dockActions);
   function addButton(label: string, disabled = false): HTMLButtonElement {
     const button = document.createElement("button");
@@ -255,7 +257,12 @@ export function mountSketchpad(
     const state = history.getState();
     renderDocument(
       context!,
-      { ...DOCUMENT_SETTINGS, commands: state.commands },
+      {
+        ...DOCUMENT_SETTINGS,
+        commands: state.commands.filter((_, index) =>
+          !(textEditor && editingIndex === index)
+        ),
+      },
       interaction.preview,
     );
     undoButton.disabled = !state.canUndo;
@@ -269,16 +276,35 @@ export function mountSketchpad(
         ? command.style
         : slot === "background"
         ? "White"
-        : slot === "border"
+        : slot === "border" || slot === "postcode"
         ? "None"
         : "Free layout";
+      select.parentElement?.querySelectorAll<HTMLButtonElement>(
+        "button[data-style]",
+      ).forEach((button) =>
+        button.setAttribute(
+          "aria-pressed",
+          String(button.dataset.style === select.value),
+        )
+      );
     }
+    const postcode = state.commands.find((command) =>
+      command.kind === "decoration" && command.slot === "postcode"
+    );
+    postcodeFields.hidden = !postcode;
+    postcodeInputs.forEach((field, index) => {
+      field.value = postcode?.kind === "decoration"
+        ? (postcode.text?.[index] ?? "").trim()
+        : "";
+    });
     selectionController?.refresh();
   }
 
   let textMode = false;
   let moveMode = false;
   let textEditor: HTMLTextAreaElement | null = null;
+  let editingIndex: number | null = null;
+  let editingOriginal: StickerCommand | null = null;
   let textPosition: Point | null = null;
   let lastBrushId = "fine-marker";
   const overrides = new Map<string, ToolDefinition>();
@@ -317,7 +343,8 @@ export function mountSketchpad(
     const tool = selectedTool();
     const brush = !textMode &&
       (tool?.kind === "marker" || tool?.kind === "eraser");
-    settings.hidden = moveMode || (!brush && !textMode);
+    settings.hidden = false;
+    settings.classList.toggle("inactive-settings", !brush);
     brushSize.value = textMode
       ? "32"
       : tool?.kind === "marker" || tool?.kind === "eraser"
@@ -413,6 +440,15 @@ export function mountSketchpad(
       ? `Selected tool: ${selected.label}`
       : "No tool selected.";
     syncSettings();
+    const textGroup = document.createElement("section");
+    textGroup.className = "palette-group text-tools";
+    const textHeading = document.createElement("h3");
+    textHeading.textContent = "Text";
+    textButton.textContent = "T  Add text";
+    textGroup.append(textHeading, textButton);
+    palette.prepend(textGroup);
+    const brushGroup = palette.querySelector('[aria-label="Brushes"]');
+    brushGroup?.querySelector("h3")?.after(settings);
     const emojiHeading = palette.querySelector(
       '[aria-label="Emoji & stamps"] h3',
     );
@@ -483,20 +519,27 @@ export function mountSketchpad(
     moveMode = false;
     selectionController?.clear();
     refreshPalette();
+    fontSize.value = "32";
+    fontColor.value = ink.value;
     beginTextAt({ x: 85, y: 110 });
+    textToolbar.hidden = false;
   }
   function finishText(cancel = false): void {
     if (!textEditor || !textPosition) return;
     const value = textEditor.value.trim();
     const point = textPosition;
     const editor = textEditor;
+    const prior = editingOriginal;
+    const priorIndex = editingIndex;
+    editingOriginal = null;
+    editingIndex = null;
     textEditor = null;
     textPosition = null;
     editor.remove();
     if (!cancel && value) {
       const tool: ToolDefinition = {
         id: `text-${crypto.randomUUID()}`,
-        label: value.slice(0, 24),
+        label: Array.from(value).slice(0, 24).join(""),
         kind: "sticker",
         text: value,
         size: Number(brushSize.value),
@@ -505,14 +548,28 @@ export function mountSketchpad(
         category: "text",
         align: "left",
       };
-      tools.add(tool);
-      history.commit(createCommandFactory().createSticker(point, tool));
+      if (prior && priorIndex !== null) {
+        const commands = [...history.getState().commands];
+        commands[priorIndex] = Object.freeze({
+          ...prior,
+          text: value,
+          size: Number(fontSize.value),
+          color: fontColor.value,
+          fontFamily: fontChoice.value,
+        });
+        history.replace(commands);
+      } else {
+        tools.add(tool);
+        history.commit(createCommandFactory().createSticker(point, tool));
+      }
       textMode = false;
       moveMode = true;
-      selectionController?.select(history.getState().commands.length - 1);
+      selectionController?.select(
+        priorIndex ?? history.getState().commands.length - 1,
+      );
       refreshPalette();
-      redraw();
     }
+    redraw();
   }
   function typeOnCanvas(event: MouseEvent): void {
     if (!textMode || moveMode) return;
@@ -552,9 +609,23 @@ export function mountSketchpad(
     editor.style.fontSize = `${
       Number(brushSize.value) * rect.width / canvas.width
     }px`;
-    editor.style.color = ink.value;
-    editor.style.fontFamily = fontChoice.value;
-    editor.addEventListener("blur", () => finishText());
+    editor.style.color = editingOriginal?.color ?? ink.value;
+    editor.style.fontFamily = editingOriginal?.fontFamily ?? fontChoice.value;
+    if (editingOriginal) {
+      editor.value = editingOriginal.text;
+      editor.style.fontSize = `${
+        editingOriginal.size * rect.width / canvas.width
+      }px`;
+      editor.style.transform = `rotate(${editingOriginal.rotation ?? 0}rad)`;
+      editor.style.transformOrigin = "top left";
+    }
+    editor.addEventListener("blur", (event) => {
+      if (
+        event.relatedTarget instanceof Node &&
+        textToolbar.contains(event.relatedTarget)
+      ) return;
+      finishText();
+    });
     editor.addEventListener("keydown", (key) => {
       if (key.key === "Escape") {
         key.preventDefault();
@@ -567,6 +638,8 @@ export function mountSketchpad(
     textEditor = editor;
     stage.append(editor);
     editor.focus();
+    if (editingOriginal) editor.select();
+    redraw();
   }
   const emojiForm = document.createElement("form");
   emojiForm.className = "emoji-form";
@@ -682,8 +755,11 @@ export function mountSketchpad(
     slot: DecorationCommand["slot"],
     styles: string[],
   ): void {
-    const wrapper = document.createElement("label");
-    wrapper.textContent = label;
+    const wrapper = document.createElement("div");
+    wrapper.className = "template-group";
+    const title = document.createElement("span");
+    title.textContent = label;
+    wrapper.append(title);
     const select = document.createElement("select");
     for (const style of styles) {
       const option = document.createElement("option");
@@ -694,25 +770,117 @@ export function mountSketchpad(
     select.addEventListener("change", () => {
       finishText();
       selectionController.clear();
+      const prior = history.getState().commands.find((command) =>
+        command.kind === "decoration" && command.slot === slot
+      );
       const commands = history.getState().commands.filter((command) =>
         command.kind !== "decoration" || command.slot !== slot
       );
       if (select.value !== "None" && select.value !== "Free layout") {
         if (slot === "background") {
           commands.unshift(decoration(slot, select.value));
-        } else commands.push(decoration(slot, select.value));
+        } else {commands.push(
+            decoration(
+              slot,
+              select.value,
+              prior?.kind === "decoration" ? prior.text : "",
+            ),
+          );}
       }
       history.replace(commands);
       redraw();
     });
     decorationSelectors.set(slot, select);
-    wrapper.append(select);
+    select.hidden = true;
+    const tiles = document.createElement("div");
+    tiles.className = "template-tiles";
+    for (const style of styles) {
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.title = style;
+      tile.dataset.style = style;
+      tile.setAttribute("aria-label", `${label}: ${style}`);
+      tile.setAttribute("aria-pressed", String(select.value === style));
+      const sample = document.createElement("canvas");
+      sample.width = 160;
+      sample.height = 120;
+      sample.setAttribute("aria-hidden", "true");
+      const sampleContext = sample.getContext("2d")!;
+      templatePreview(sampleContext, slot, style);
+      tile.append(sample);
+      tile.addEventListener("click", () => {
+        select.value = style;
+        select.dispatchEvent(new Event("change"));
+      });
+      tiles.append(tile);
+    }
+    wrapper.append(select, tiles);
     decorations.append(wrapper);
   }
   decorationChoice("Paper / background", "background", PAPER_STYLES);
   decorationChoice("Border", "border", BORDER_STYLES);
   decorationChoice("Writing layout", "layout", LAYOUT_STYLES);
-  sidebar.insertBefore(decorations, palette);
+  decorationChoice("Postal code", "postcode", [
+    "None",
+    "Red",
+    "Black",
+    "Deep gold",
+  ]);
+  const postcodeFields = document.createElement("div");
+  postcodeFields.className = "postcode-fields";
+  postcodeFields.hidden = true;
+  postcodeFields.setAttribute("role", "group");
+  postcodeFields.setAttribute("aria-label", "Postal code boxes");
+  const postcodeInputs: HTMLInputElement[] = [];
+  function updatePostcode(): void {
+    const commands = [...history.getState().commands];
+    const index = commands.findIndex((command) =>
+      command.kind === "decoration" && command.slot === "postcode"
+    );
+    if (index < 0) return;
+    const command = commands[index];
+    if (command.kind !== "decoration") return;
+    commands[index] = decoration(
+      "postcode",
+      command.style,
+      postcodeInputs.map((input) => input.value || " ").join(""),
+    );
+    history.replace(commands);
+    redraw();
+  }
+  for (let i = 0; i < 6; i++) {
+    const field = document.createElement("input");
+    field.maxLength = 1;
+    field.autocomplete = "off";
+    field.setAttribute("aria-label", `Postal code character ${i + 1}`);
+    field.addEventListener("input", () => {
+      updatePostcode();
+      if (field.value) postcodeInputs[i + 1]?.focus();
+    });
+    field.addEventListener("keydown", (event) => {
+      if (event.key === "Backspace" && !field.value) {
+        postcodeInputs[i - 1]?.focus();
+      }
+      if (event.key === "ArrowLeft") postcodeInputs[i - 1]?.focus();
+      if (event.key === "ArrowRight") postcodeInputs[i + 1]?.focus();
+    });
+    field.addEventListener("paste", (event) => {
+      const value = event.clipboardData?.getData("text").replace(/\s/g, "")
+        .slice(0, 6 - i);
+      if (value) {
+        event.preventDefault();
+        Array.from(value).forEach((char, j) =>
+          postcodeInputs[i + j].value = char
+        );
+        updatePostcode();
+      }
+    });
+    postcodeInputs.push(field);
+    postcodeFields.append(field);
+  }
+  stage.append(postcodeFields);
+  decorations.classList.add("template-panel");
+  layout.prepend(decorations);
 
   const textToolbar = document.createElement("div");
   textToolbar.className = "text-context-toolbar";
@@ -743,14 +911,19 @@ export function mountSketchpad(
   const fontColor = document.createElement("input");
   fontColor.type = "color";
   fontColor.setAttribute("aria-label", "Text color");
-  const textContent = document.createElement("textarea");
-  textContent.rows = 2;
-  textContent.maxLength = 500;
-  textContent.setAttribute("aria-label", "Edit selected text");
-  textToolbar.append(fontChoice, fontSize, fontColor, textContent);
-  stage.append(textToolbar);
+  textToolbar.append(fontChoice, fontSize, fontColor);
+  drawingArea.insertBefore(textToolbar, stage);
   let formattedIndex: number | null = null;
   function formatText(): void {
+    if (textEditor) {
+      const rect = canvas.getBoundingClientRect();
+      textEditor.style.fontFamily = fontChoice.value;
+      textEditor.style.color = fontColor.value;
+      textEditor.style.fontSize = `${
+        Number(fontSize.value) * rect.width / canvas.width
+      }px`;
+      return;
+    }
     if (formattedIndex === null) return;
     const commands = [...history.getState().commands];
     const command = commands[formattedIndex];
@@ -758,7 +931,7 @@ export function mountSketchpad(
     const size = Math.max(8, Math.min(256, Number(fontSize.value) || 32));
     commands[formattedIndex] = Object.freeze({
       ...command,
-      text: textContent.value,
+      text: command.text,
       size,
       color: fontColor.value,
       fontFamily: fontChoice.value,
@@ -766,22 +939,20 @@ export function mountSketchpad(
     history.replace(commands);
     redraw();
   }
-  for (const control of [fontChoice, fontSize, fontColor, textContent]) {
+  for (const control of [fontChoice, fontSize, fontColor]) {
     control.addEventListener("change", formatText);
   }
   function showTextFormatting(
     command: StickerCommand | null,
     index: number | null,
   ): void {
+    if (textEditor && editingOriginal) return;
     textToolbar.hidden = !command || command.align !== "left";
     formattedIndex = textToolbar.hidden ? null : index;
     if (textToolbar.hidden || !command) return;
     fontChoice.value = command.fontFamily ?? "system-ui";
     fontSize.value = String(Math.round(command.size));
     fontColor.value = command.color ?? "#22372b";
-    if (document.activeElement !== textContent) {
-      textContent.value = command.text;
-    }
   }
   moveButton.addEventListener("click", selectMode);
   const selectionController = mountSelection({
@@ -791,6 +962,18 @@ export function mountSketchpad(
     context,
     isEnabled: () => moveMode,
     onChange: redraw,
+    onEditText: (command, index) => {
+      finishText();
+      editingOriginal = command;
+      editingIndex = index;
+      fontChoice.value = command.fontFamily ?? "system-ui";
+      fontSize.value = String(command.size);
+      fontColor.value = command.color ?? "#22372b";
+      textToolbar.hidden = false;
+      selectionController.clear();
+      beginTextAt(command.position);
+      textToolbar.hidden = false;
+    },
     onSelection: (command, index) =>
       showTextFormatting(command?.kind === "sticker" ? command : null, index),
     onPreview: (commands) =>
@@ -879,6 +1062,12 @@ export function mountSketchpad(
   clearButton.addEventListener("click", clear);
 
   exportButton.addEventListener("click", downloadPng);
+  void sparkleBrushes().then((presets) => {
+    if (!disposed) {
+      for (const tool of presets) tools.add(tool);
+      refreshPalette();
+    }
+  });
   void postalTools().then((presets) => {
     if (disposed) return;
     for (const tool of presets) tools.add(tool);
@@ -907,7 +1096,7 @@ export function mountSketchpad(
     exportButton.removeEventListener("click", downloadPng);
     finishText(true);
     selectionController?.dispose();
-    for (const control of [fontChoice, fontSize, fontColor, textContent]) {
+    for (const control of [fontChoice, fontSize, fontColor]) {
       control.removeEventListener("change", formatText);
     }
     moveButton.removeEventListener("click", selectMode);
