@@ -141,6 +141,7 @@ export const mountCustomToolForm: MountCustomToolForm = (options) => {
         id,
         label,
         kind: "sticker",
+        category: /\p{Extended_Pictographic}/u.test(content) ? "emoji" : "text",
         text: content,
         size: fontSize,
       });
@@ -287,6 +288,7 @@ export function mountSketchpad(
   layout.className = "workspace";
 
   const sidebar = document.createElement("aside");
+  sidebar.className = "tool-dock";
   const toolsHeading = document.createElement("h2");
   toolsHeading.textContent = "Tools";
   const palette = document.createElement("div");
@@ -300,7 +302,14 @@ export function mountSketchpad(
 
   const drawingArea = document.createElement("section");
   const controls = document.createElement("div");
-  controls.className = "controls";
+  controls.className = "controls canvas-actions";
+  const dockActions = document.createElement("div");
+  dockActions.className = "dock-actions";
+  const textButton = document.createElement("button");
+  textButton.type = "button";
+  textButton.textContent = "＋ Add text";
+  dockActions.append(textButton);
+  sidebar.prepend(dockActions);
   function addButton(label: string, disabled = false): HTMLButtonElement {
     const button = document.createElement("button");
     button.type = "button";
@@ -309,16 +318,53 @@ export function mountSketchpad(
     controls.append(button);
     return button;
   }
-  const undoButton = addButton("Undo", true);
-  const redoButton = addButton("Redo", true);
-  const redrawButton = addButton("Redraw");
+  function iconButton(
+    label: string,
+    path: string,
+    disabled = false,
+  ): HTMLButtonElement {
+    const button = addButton(label, disabled);
+    button.className = "icon-button";
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.textContent = "";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    const shape = document.createElementNS(svg.namespaceURI, "path");
+    shape.setAttribute("d", path);
+    svg.append(shape);
+    button.append(svg);
+    return button;
+  }
+  const undoButton = iconButton(
+    "Undo",
+    "M9 4 4 9l5 5 M4 9h9a7 7 0 0 1 0 14",
+    true,
+  );
+  const redoButton = iconButton(
+    "Redo",
+    "m15 4 5 5-5 5 M20 9h-9a7 7 0 0 0 0 14",
+    true,
+  );
+  const redrawButton = iconButton("Redraw", "M20 8a8 8 0 1 0 0 8 M20 3v5h-5");
   redrawButton.title = "Repaint the current artwork without removing it.";
   const clearButton = addButton("Clear", true);
   clearButton.title = "Clear the artwork. Undo restores it.";
-  const createToolButton = addButton("Create Tool");
+  const createToolButton = addButton("＋ Create tool");
+  dockActions.append(createToolButton);
   createToolButton.setAttribute("aria-controls", customToolContainer.id);
   createToolButton.setAttribute("aria-expanded", "false");
+  const importButton = addButton("Import PNG");
+  importButton.title = "Import a PNG as a reusable stamp";
   const exportButton = addButton("Export PNG");
+  exportButton.className = "primary-action";
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = "image/png,.png";
+  fileInput.hidden = true;
+  fileInput.setAttribute("aria-label", "Import PNG stamp");
+  controls.append(fileInput);
 
   const canvas = document.createElement("canvas");
   canvas.width = DOCUMENT_SETTINGS.width;
@@ -340,8 +386,8 @@ export function mountSketchpad(
   const footer = document.createElement("div");
   footer.className = "canvas-footer";
   footer.append(dimensions, musicPlayer);
-  drawingArea.append(controls, canvas, footer, exportStatus);
-  layout.append(sidebar, drawingArea);
+  drawingArea.append(controls, canvas, sidebar, footer, exportStatus);
+  layout.append(drawingArea);
   app.replaceChildren(heading, note, layout);
 
   function redraw(): void {
@@ -419,6 +465,7 @@ export function mountSketchpad(
   }
 
   function openToolForm(): void {
+    customToolContainer.querySelector("h3")!.textContent = "Create tool";
     input.cancelGesture();
     customToolContainer.hidden = false;
     createToolButton.setAttribute("aria-expanded", "true");
@@ -455,6 +502,88 @@ export function mountSketchpad(
     }
   }
 
+  function addText(): void {
+    openToolForm();
+    const kind = customToolContainer.querySelector("select")!;
+    kind.value = "sticker";
+    kind.dispatchEvent(new Event("change"));
+    customToolContainer.querySelector("h3")!.textContent = "Add text";
+    customToolContainer.querySelector("input")?.focus();
+  }
+
+  const importedUrls = new Set<string>();
+  let importing = false;
+  let disposed = false;
+  function choosePng(): void {
+    fileInput.click();
+  }
+  async function importPng(): Promise<void> {
+    const file = fileInput.files?.[0];
+    fileInput.value = "";
+    if (!file || importing) return;
+    if (file.size > 10 * 1024 * 1024) {
+      exportStatus.textContent = "Choose a PNG smaller than 10 MB.";
+      return;
+    }
+    importing = true;
+    importButton.disabled = true;
+    const url = URL.createObjectURL(file);
+    try {
+      const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+      if (
+        ![137, 80, 78, 71, 13, 10, 26, 10].every((byte, i) =>
+          signature[i] === byte
+        )
+      ) {
+        throw new Error("Choose a valid PNG image.");
+      }
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      if (
+        !image.naturalWidth || !image.naturalHeight ||
+        image.naturalWidth * image.naturalHeight > 16_000_000
+      ) {
+        throw new Error("Choose a PNG with at most 16 million pixels.");
+      }
+      if (disposed) return;
+      // Keep the decoded image for command replay; no uploads are performed.
+      const scale = Math.min(
+        1,
+        120 / Math.max(image.naturalWidth, image.naturalHeight),
+      );
+      const tool: ToolDefinition = {
+        id: `png-${crypto.randomUUID()}`,
+        label: file.name.replace(/\.png$/i, ""),
+        kind: "image",
+        image,
+        width: image.naturalWidth * scale,
+        height: image.naturalHeight * scale,
+      };
+      input.cancelGesture();
+      tools.add(tool);
+      importedUrls.add(url);
+      interaction.selectedToolId = tool.id;
+      refreshPalette();
+      exportStatus.textContent =
+        "PNG stamp ready. Click the canvas to place it; select it again to reuse.";
+    } catch (error) {
+      if (!disposed) {
+        exportStatus.textContent = error instanceof Error
+          ? error.message
+          : "Could not import the PNG.";
+      }
+    } finally {
+      // Successful imports retain their local URL for palette thumbnails.
+      if (!importedUrls.has(url)) URL.revokeObjectURL(url);
+      importing = false;
+      if (!disposed) importButton.disabled = false;
+    }
+  }
+
+  textButton.addEventListener("click", addText);
+  importButton.addEventListener("click", choosePng);
+  fileInput.addEventListener("change", importPng);
   undoButton.addEventListener("click", undo);
   redoButton.addEventListener("click", redo);
   redrawButton.addEventListener("click", redraw);
@@ -465,6 +594,12 @@ export function mountSketchpad(
   redraw();
 
   return () => {
+    disposed = true;
+    for (const url of importedUrls) URL.revokeObjectURL(url);
+    importedUrls.clear();
+    textButton.removeEventListener("click", addText);
+    importButton.removeEventListener("click", choosePng);
+    fileInput.removeEventListener("change", importPng);
     input.dispose();
     undoButton.removeEventListener("click", undo);
     redoButton.removeEventListener("click", redo);
