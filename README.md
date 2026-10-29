@@ -4,17 +4,31 @@
 
 ## Use
 
-Click **Create Tool**, enter a name, choose Marker (color/width) or Sticker (text/size), then **Add Tool**. The new tool is selected automatically: drag to draw or click to stamp. Presets and palette buttons are not integrated yet, so earlier tools cannot be reselected.
+Start with **Fine pen** (green, 3px) or **Broad pen** (rose, 12px), or select **Flower**, **Tree**, **Butterfly**, **Sun**, or **Hello** and click the canvas to stamp. The selected tool has a highlighted button and is named below the palette.
+
+Click **Create Tool**, enter a name, choose Marker (color/width) or Sticker (text/size), then **Add Tool**. The new tool is selected automatically and remains in the palette for reuse. Drag to draw or click to stamp. Tool buttons support Tab and Enter/Space; keyboard focus stays on the selected button. Hover a tool for its dimensions and usage.
 
 **Undo/Redo** support multiple steps; a new drawing action discards redo. **Clear** empties the canvas and can be undone. **Redraw** repaints existing artwork. **Export PNG** downloads the active artwork at 1600 × 1200 with a white background, excluding undone marks and previews. Reloading loses the session.
+
+## Development and design
+
+Run `deno task dev` for the local Vite preview. Run `deno task ci` for formatting, lint, type checks, and a production build. Pushing to `main` runs the existing GitHub Pages deployment workflow.
+
+The retained command model in `core.ts` remains the source for canvas redraw and scaled export. `presets.ts` supplies ordinary `ToolDefinition` values, exactly like the custom-tool form. `palette.ts` renders all registered tools and reports selection through the existing callback; it does not draw or manage history.
+
+The initial empty palette forced users to create a tool before making a mark and prevented returning to earlier tools. The revision adds seven garden presets, visual marker/sticker previews, pressed-state feedback, and a shared palette for custom tools. Native buttons preserve familiar keyboard interaction. No artwork is stored in the palette, and the canvas/history/export pipeline is unchanged. Emoji appearance depends on the device font.
+
+Before release, check: both pen widths; all five stickers; switching back to a previous tool; a custom marker and sticker; repeated Undo/Redo; Clear followed by Undo; and PNG export after undoing content. Refresh intentionally resets the session.
 
 ## Developers: adding a rectangle tool
 
 - [types.ts](src/types.ts): Add `RectangleTool` and `RectangleCommand` (geometry, color, line width, `render(context)`) to the tool/command unions; extend `CommandFactory` and widen both preview types to `DrawingCommand | null`.
 - [core.ts](src/core.ts): Extend `createCommandFactory` to snapshot normalized rectangle geometry/style and render with context save/restore. Add a rectangle gesture and explicit branches in `attachCanvasInput`'s down/move/up handlers: preview while dragging, commit once on release, discard on cancellation.
-- [presets.ts](src/presets.ts): Register the tool. Complete [palette.ts](src/palette.ts)'s `renderToolPalette` to list tools, mark selection, and call `onSelect(tool.id)`. For custom rectangles, extend [main.ts](src/main.ts)'s `mountCustomToolForm` options, fields, visibility, and submit validation.
+- [presets.ts](src/presets.ts): Register the tool. The shared [palette.ts](src/palette.ts) renderer already lists tools and calls `onSelect(tool.id)`; extend its preview branch to represent rectangles. For custom rectangles, extend [main.ts](src/main.ts)'s `mountCustomToolForm` options, fields, visibility, and submit validation.
 - `createToolRegistry` and `mountSketchpad` already pass generic tools. `createHistoryStore` handles generic commands, so rectangle commits support Undo/Redo/Clear unchanged. `renderDocument` calls each command's renderer; `exportPng` reuses it on a separate scaled canvas without previews, so Redraw and export need no rectangle-specific changes.
 
 ## Credits
 
 Tooling adapted from the [CMPM 121 Fall 2026 D1 starter](https://github.com/ucsc-cmpm-121-f26/d1-starter/tree/d949e744b0f9fb7c133a5316f86f2b7fe54529ad), derived from the [S01 starter](https://github.com/ucsc-cmpm-121-f26/s01-starter/tree/8974888efb6537be82e8eb069db139ea885039da). Those repositories have no explicit repository license; no new license is assigned to that material. The D2 scaffold was authored with OpenCode/OpenAI GPT-6.1 Sol assistance. Dependencies retain their respective licenses.
+
+Preset and palette implementation assisted by Codex (OpenAI GPT-6). Commit trailers identify assisted changes.
