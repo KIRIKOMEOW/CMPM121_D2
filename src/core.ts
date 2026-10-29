@@ -1,3 +1,4 @@
+import { renderFancyBrush } from "./brushes.ts";
 import type {
   AttachCanvasInput,
   CommandFactory,
@@ -112,18 +113,21 @@ export function createCommandFactory(): CommandFactory {
       const command: StrokeCommand = {
         kind: "stroke",
         points: savedPoints,
-        // The document has a fixed white background; white strokes erase marks.
+        // Eraser strokes remove artwork and expose the postcard paper.
         color: tool.kind === "eraser"
           ? DOCUMENT_SETTINGS.background
           : tool.color,
         width: tool.width,
         erase: tool.kind === "eraser",
+        brush: tool.kind === "marker" ? tool.brush : "solid",
+        tip: tool.kind === "marker" ? tool.tip : undefined,
         render(context) {
           context.save();
           try {
             context.globalCompositeOperation = this.erase
               ? "destination-out"
               : "source-over";
+            if (renderFancyBrush(context, this)) return;
             context.strokeStyle = this.color;
             context.fillStyle = this.color;
             context.lineWidth = this.width;
@@ -320,7 +324,13 @@ export const attachCanvasInput: AttachCanvasInput = (options) => {
     if (x < 0 || y < 0 || x > documentSize.width || y > documentSize.height) {
       return null;
     }
-    return { x, y };
+    return {
+      x,
+      y,
+      pressure: event.pointerType === "pen"
+        ? Math.max(0.05, event.pressure)
+        : 0.65,
+    };
   }
 
   function appendPoint(active: MarkerGesture, point: Point): void {

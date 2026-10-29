@@ -26,6 +26,22 @@ export const PRESET_TOOLS: readonly ToolDefinition[] = [
     size: 48,
   },
   { id: "sun", label: "Sun", kind: "sticker", text: "☀️", size: 64 },
+  {
+    id: "soft-brush",
+    label: "Soft airbrush",
+    kind: "marker",
+    color: "#ce82a4",
+    width: 42,
+    brush: "soft",
+  },
+  {
+    id: "pressure-brush",
+    label: "Pressure ink · pen",
+    kind: "marker",
+    color: "#324a40",
+    width: 18,
+    brush: "pressure",
+  },
   { id: "eraser", label: "Eraser", kind: "eraser", width: 28 },
   ...[
     ["tulip", "Tulip", "🌷"],

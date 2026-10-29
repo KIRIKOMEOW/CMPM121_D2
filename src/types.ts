@@ -1,6 +1,7 @@
 export interface Point {
   readonly x: number;
   readonly y: number;
+  readonly pressure?: number;
 }
 
 interface ToolBase {
@@ -12,6 +13,8 @@ export interface MarkerTool extends ToolBase {
   readonly kind: "marker";
   readonly color: string;
   readonly width: number;
+  readonly brush?: "solid" | "soft" | "pressure" | "sparkle";
+  readonly tip?: HTMLImageElement;
 }
 
 export interface EraserTool extends ToolBase {
@@ -49,6 +52,8 @@ export interface StrokeCommand extends ReplayableCommand {
   readonly points: readonly Point[];
   readonly color: string;
   readonly width: number;
+  readonly brush?: "solid" | "soft" | "pressure" | "sparkle";
+  readonly tip?: HTMLImageElement;
   readonly erase?: boolean;
 }
 
@@ -72,7 +77,8 @@ export interface ImageCommand extends ReplayableCommand {
 
 export interface DecorationCommand extends ReplayableCommand {
   readonly kind: "decoration";
-  readonly slot: "background" | "border" | "layout";
+  readonly slot: "background" | "border" | "layout" | "postcode";
+  readonly text?: string;
   readonly style: string;
 }
 
