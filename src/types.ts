@@ -14,13 +14,26 @@ export interface MarkerTool extends ToolBase {
   readonly width: number;
 }
 
+export interface EraserTool extends ToolBase {
+  readonly kind: "eraser";
+  readonly width: number;
+}
+
+export interface ImageTool extends ToolBase {
+  readonly kind: "image";
+  readonly image: HTMLImageElement;
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface StickerTool extends ToolBase {
   readonly kind: "sticker";
   readonly text: string;
   readonly size: number;
+  readonly category?: "text" | "emoji";
 }
 
-export type ToolDefinition = MarkerTool | StickerTool;
+export type ToolDefinition = MarkerTool | EraserTool | StickerTool | ImageTool;
 
 interface ReplayableCommand {
   // Use the supplied context; never capture the interactive canvas context.
@@ -41,7 +54,15 @@ export interface StickerCommand extends ReplayableCommand {
   readonly size: number;
 }
 
-export type DrawingCommand = StrokeCommand | StickerCommand;
+export interface ImageCommand extends ReplayableCommand {
+  readonly kind: "image";
+  readonly position: Point;
+  readonly image: HTMLImageElement;
+  readonly width: number;
+  readonly height: number;
+}
+
+export type DrawingCommand = StrokeCommand | StickerCommand | ImageCommand;
 
 export interface DocumentSettings {
   readonly width: number;
@@ -69,8 +90,12 @@ export type PaletteRenderer = (
 ) => void;
 
 export interface CommandFactory {
-  createStroke(points: readonly Point[], tool: MarkerTool): StrokeCommand;
+  createStroke(
+    points: readonly Point[],
+    tool: MarkerTool | EraserTool,
+  ): StrokeCommand;
   createSticker(position: Point, tool: StickerTool): StickerCommand;
+  createImage(position: Point, tool: ImageTool): ImageCommand;
 }
 
 export interface HistoryState {

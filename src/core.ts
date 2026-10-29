@@ -4,8 +4,11 @@ import type {
   DocumentRenderer,
   DocumentSettings,
   DrawingCommand,
+  EraserTool,
   ExportPng,
   HistoryStore,
+  ImageCommand,
+  ImageTool,
   MarkerTool,
   Point,
   StickerCommand,
@@ -100,7 +103,10 @@ export function createCommandFactory(): CommandFactory {
       const command: StrokeCommand = {
         kind: "stroke",
         points: savedPoints,
-        color: tool.color,
+        // The document has a fixed white background; white strokes erase marks.
+        color: tool.kind === "eraser"
+          ? DOCUMENT_SETTINGS.background
+          : tool.color,
         width: tool.width,
         render(context) {
           context.save();
@@ -122,6 +128,30 @@ export function createCommandFactory(): CommandFactory {
               }
               context.stroke();
             }
+          } finally {
+            context.restore();
+          }
+        },
+      };
+      return Object.freeze(command);
+    },
+    createImage(position, tool) {
+      const command: ImageCommand = {
+        kind: "image",
+        position: Object.freeze({ ...position }),
+        image: tool.image,
+        width: tool.width,
+        height: tool.height,
+        render(context) {
+          context.save();
+          try {
+            context.drawImage(
+              this.image,
+              this.position.x - this.width / 2,
+              this.position.y - this.height / 2,
+              this.width,
+              this.height,
+            );
           } finally {
             context.restore();
           }
@@ -213,14 +243,14 @@ export const exportPng: ExportPng = async (
 interface MarkerGesture {
   readonly kind: "marker";
   readonly pointerId: number;
-  readonly tool: MarkerTool;
+  readonly tool: MarkerTool | EraserTool;
   readonly points: Point[];
 }
 
 interface StickerGesture {
   readonly kind: "sticker";
   readonly pointerId: number;
-  readonly tool: StickerTool;
+  readonly tool: StickerTool | ImageTool;
 }
 
 export const attachCanvasInput: AttachCanvasInput = (options) => {
@@ -259,7 +289,7 @@ export const attachCanvasInput: AttachCanvasInput = (options) => {
     const point = getPoint(event);
     if (!tool || !point) return;
     event.preventDefault();
-    if (tool.kind === "marker") {
+    if (tool.kind === "marker" || tool.kind === "eraser") {
       gesture = {
         kind: "marker",
         pointerId: event.pointerId,
@@ -307,7 +337,11 @@ export const attachCanvasInput: AttachCanvasInput = (options) => {
       appendPoint(completed, point);
       options.onCommit(commands.createStroke(completed.points, completed.tool));
     } else {
-      options.onCommit(commands.createSticker(point, completed.tool));
+      options.onCommit(
+        completed.tool.kind === "image"
+          ? commands.createImage(point, completed.tool)
+          : commands.createSticker(point, completed.tool),
+      );
     }
   }
 
