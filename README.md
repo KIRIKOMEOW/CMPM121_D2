@@ -4,33 +4,31 @@
 
 ## Use
 
-The top bar contains icon buttons for **Undo**, **Redo**, and **Redraw**, plus **Clear**, **Import PNG**, and **Export PNG**. Hover an icon for its name. The tools dock sits immediately below the canvas with smaller buttons grouped into **Text**, **Emoji & stamps**, and **Brushes**.
+The postcard is on the left and its editing tools are on the right (stacked on very small screens). Clear and Export PNG are above the postcard. Undo/Redo, Select, Add text, and Import PNG are in the editing toolbar.
 
-- **Brushes:** choose Fine pen (green, 3px), Broad pen (rose, 12px), or Eraser (28px), then drag. Erasing paints the fixed white document background and is recorded as a stroke, so Undo restores the previous content.
-- **Emoji & stamps:** select one of 22 garden, animal, weather, and decorative emoji, then click the canvas. Emoji artwork depends on the device font.
-- **Text:** click **Add text**, enter a tool name and text, choose a size, then **Add Tool**. Click the canvas to stamp it, and reselect it from Text to reuse it.
-- **Custom tools:** **Create tool** is in the tools dock; choose Marker or Sticker to create another reusable tool. Text stickers go under Text; pictographic stickers go under Emoji & stamps.
-- **PNG stamps:** **Import PNG** accepts a local PNG up to 10 MB and 16 million pixels. The image becomes a selected, reusable stamp with its aspect ratio preserved and longest side capped at 120 document pixels. Transparency is preserved over the white canvas. Invalid files show an error. Imports stay on your device; there is no server upload.
+- **Decorations:** choose from seven plain/dotted papers, three optional borders, and three optional writing layouts. Each change supports Undo/Redo. Four original vector postal motifs can be freely combined with emoji and imported PNGs.
+- **Add text:** a text box appears on the canvas immediately. Type text or emoji; finish with Cmd/Ctrl+Enter or by clicking elsewhere. Select the resulting text to change its wording, font family, size, or color using the contextual toolbar. Available fonts use local/system fallbacks.
+- **Arrange:** newly placed text, emoji, and image stamps are selected automatically. Drag the selection to move it, drag the lower-right handle to resize, or drag the round handle to rotate. Click × or press Delete/Backspace to remove it. Use Select (V) to select another element. All completed edits support Undo/Redo; Esc cancels an active transform. Freehand strokes are edited with the eraser rather than individual selection boxes.
+- **Brushes:** choose a brush or eraser, adjust its size/color, then draw. Each brush remembers its settings during the session. The + beside Brushes saves the current brush as a reusable preset. The eraser reveals the current paper and writing layout.
+- **Emoji:** 22 presets are included. The + beside Emoji opens a field where you can type your own emoji and save it as a reusable stamp.
+- **Import PNG:** create a reusable stamp from a local PNG (up to 10 MB and 16 million pixels). Its initial longest side is capped at 120 document pixels; resize it on the canvas. Imported images remain on your device.
+- **Export:** replay the current document into a separate 1600 × 1200 canvas. Paper, borders, layout, text, transformed stamps, and erasing are included; selection boxes, text editors, and toolbars are excluded.
 
-Tool buttons support Tab and Enter/Space and retain focus when selected. Hover to see the name and usage.
-**Undo/Redo** support multiple steps; a new drawing action discards redo. **Clear** empties the canvas and can be undone. **Redraw** repaints existing artwork. **Export PNG** downloads the active artwork at 1600 × 1200 with a white background, excluding undone marks and previews. Reloading loses the session.
+Keyboard shortcuts: **V** Select, **B** last brush, **E** eraser, **T** new text, **[ / ]** brush/eraser size, **Cmd/Ctrl+Z** Undo, **Cmd/Ctrl+Shift+Z** Redo, **Cmd/Ctrl+Enter** finish text, **Esc** cancel, **Delete/Backspace** remove selected element. Editing shortcuts pause in text and form fields.
+
+Reloading resets the session. Export before closing if you want to keep the finished postcard.
 
 ## Development and design
 
-Run `deno task dev` for the local Vite preview. Run `deno task ci` for formatting, lint, type checks, and a production build. Pushing to `main` runs the existing GitHub Pages deployment workflow.
+Run `deno task dev` for Vite or `deno task ci` for formatting, lint, type checks, and a production build. The existing GitHub Pages workflow deploys pushes to `main`.
 
-The retained command model in `core.ts` remains the source for canvas redraw and scaled export. `presets.ts` supplies ordinary `ToolDefinition` values, exactly like the custom-tool form. `palette.ts` renders all registered tools and reports selection through the existing callback; it does not draw or manage history.
+`types.ts` defines meaningful commands and tools. `core.ts` retains history, creates immutable drawing commands, and replays them into the supplied context. Paper/layout render below a transparent artwork surface; eraser commands remove artwork from that surface; borders render above it. The same path handles interactive redraw and higher-resolution export.
 
-The initial empty palette forced users to create a tool before making a mark and prevented returning to earlier tools. The revision adds seven garden presets, visual marker/sticker previews, pressed-state feedback, and a shared palette for custom tools. Native buttons preserve familiar keyboard interaction. No artwork is stored in the palette, and the canvas/history/export pipeline is unchanged. Emoji appearance depends on the device font.
+`selection.ts` keeps transient selection and gesture previews outside history. A completed transform or deletion records a replacement command list as one history action, preserving Undo/Redo and discarding stale redo branches. Rotation and dimensions live on the retained commands. `decorations.ts` defines paper, borders, writing layouts, and original SVG postal motifs; no external artwork is fetched. `palette.ts` renders ordinary and user-created tools through the same callback.
 
-Before release, check: both pen widths and eraser; emoji and PNG stamps; switching back to a previous tool; a custom marker and sticker; repeated Undo/Redo; Clear followed by Undo; and PNG export after undoing content. Refresh intentionally resets the session.
+The design evolved from an empty palette, to small preset previews, to an explicit postcard composition workflow. The latest revision removes the generic Create Tool form and blend-mode controls in favor of contextual text formatting, direct object handles, and selectable postal decorations. Users can still create meaningful tools through brush presets, emoji, text, and imported PNGs.
 
-## Developers: adding a rectangle tool
-
-- [types.ts](src/types.ts): Add `RectangleTool` and `RectangleCommand` (geometry, color, line width, `render(context)`) to the tool/command unions; extend `CommandFactory` and widen both preview types to `DrawingCommand | null`.
-- [core.ts](src/core.ts): Extend `createCommandFactory` to snapshot normalized rectangle geometry/style and render with context save/restore. Add a rectangle gesture and explicit branches in `attachCanvasInput`'s down/move/up handlers: preview while dragging, commit once on release, discard on cancellation.
-- [presets.ts](src/presets.ts): Register the tool. The shared [palette.ts](src/palette.ts) renderer already lists tools and calls `onSelect(tool.id)`; extend its preview branch to represent rectangles. For custom rectangles, extend [main.ts](src/main.ts)'s `mountCustomToolForm` options, fields, visibility, and submit validation.
-- `createToolRegistry` and `mountSketchpad` already pass generic tools. `createHistoryStore` handles generic commands, so rectangle commits support Undo/Redo/Clear unchanged. `renderDocument` calls each command's renderer; `exportPng` reuses it on a separate scaled canvas without previews, so Redraw and export need no rectangle-specific changes.
+Manual verification covers direct text entry, font selection, decoration composition, stamp scaling/rotation, deletion and undo recovery, PNG import/export, invalid PNG rejection, and eraser undo. Run the CI task before publishing.
 
 ## Credits
 

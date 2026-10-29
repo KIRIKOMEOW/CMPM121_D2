@@ -1,6 +1,7 @@
 import type { PaletteRenderer, ToolDefinition } from "./types.ts";
 
 function category(tool: ToolDefinition): string {
+  if (tool.kind === "image" && !tool.id.startsWith("png-")) return "Postmarks";
   if (tool.kind === "marker" || tool.kind === "eraser") return "Brushes";
   if (
     tool.kind === "sticker" && tool.category !== "emoji" &&
@@ -21,7 +22,7 @@ export const renderToolPalette: PaletteRenderer = (
       ? active.dataset.toolId
       : undefined;
   const buttons: HTMLButtonElement[] = [];
-  const groups = ["Text", "Emoji & stamps", "Brushes"].map((name) => {
+  const groups = ["Emoji & stamps", "Postmarks", "Brushes"].map((name) => {
     const group = document.createElement("section");
     group.className = "palette-group";
     group.setAttribute("aria-label", name);
