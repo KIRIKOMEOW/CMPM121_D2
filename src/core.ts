@@ -49,7 +49,11 @@ export function createToolRegistry(
 export function createHistoryStore(): HistoryStore {
   type Action =
     | { readonly kind: "add"; readonly command: DrawingCommand }
-    | { readonly kind: "clear" };
+    | { readonly kind: "clear" }
+    | {
+      readonly kind: "replace";
+      readonly commands: readonly DrawingCommand[];
+    };
   const actions: Action[] = [];
   let cursor = 0;
 
@@ -57,7 +61,9 @@ export function createHistoryStore(): HistoryStore {
     const commands: DrawingCommand[] = [];
     for (const action of actions.slice(0, cursor)) {
       if (action.kind === "clear") commands.length = 0;
-      else commands.push(action.command);
+      else if (action.kind === "replace") {
+        commands.splice(0, commands.length, ...action.commands);
+      } else commands.push(action.command);
     }
     return commands;
   }
@@ -78,6 +84,9 @@ export function createHistoryStore(): HistoryStore {
     },
     commit(command) {
       record({ kind: "add", command });
+    },
+    replace(commands) {
+      record({ kind: "replace", commands: Object.freeze([...commands]) });
     },
     clear() {
       if (activeCommands().length > 0) record({ kind: "clear" });
@@ -108,9 +117,13 @@ export function createCommandFactory(): CommandFactory {
           ? DOCUMENT_SETTINGS.background
           : tool.color,
         width: tool.width,
+        erase: tool.kind === "eraser",
         render(context) {
           context.save();
           try {
+            context.globalCompositeOperation = this.erase
+              ? "destination-out"
+              : "source-over";
             context.strokeStyle = this.color;
             context.fillStyle = this.color;
             context.lineWidth = this.width;
@@ -145,10 +158,12 @@ export function createCommandFactory(): CommandFactory {
         render(context) {
           context.save();
           try {
+            context.translate(this.position.x, this.position.y);
+            context.rotate(this.rotation ?? 0);
             context.drawImage(
               this.image,
-              this.position.x - this.width / 2,
-              this.position.y - this.height / 2,
+              -this.width / 2,
+              -this.height / 2,
               this.width,
               this.height,
             );
@@ -165,15 +180,26 @@ export function createCommandFactory(): CommandFactory {
         position: Object.freeze({ ...position }),
         text: tool.text,
         size: tool.size,
+        color: tool.color ?? "#22372b",
+        fontFamily: tool.fontFamily ??
+          'system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif',
+        align: tool.align ?? "center",
         render(context) {
           context.save();
           try {
-            context.font =
-              `${this.size}px system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-            context.fillStyle = "#22372b";
-            context.textAlign = "center";
-            context.textBaseline = "middle";
-            context.fillText(this.text, this.position.x, this.position.y);
+            context.translate(this.position.x, this.position.y);
+            context.rotate(this.rotation ?? 0);
+            context.font = `${this.size}px ${this.fontFamily ?? "system-ui"}`;
+            context.fillStyle = this.color ?? "#22372b";
+            context.textAlign = this.align ?? "center";
+            context.textBaseline = this.align === "left" ? "top" : "middle";
+            this.text.split("\n").forEach((line, index) => {
+              context.fillText(
+                line,
+                0,
+                index * this.size * 1.25,
+              );
+            });
           } finally {
             context.restore();
           }
@@ -184,23 +210,50 @@ export function createCommandFactory(): CommandFactory {
   };
 }
 
+// A transparent artwork surface lets erasing reveal the chosen postcard paper.
+const artworkSurfaces = new WeakMap<
+  CanvasRenderingContext2D,
+  HTMLCanvasElement
+>();
 export const renderDocument: DocumentRenderer = (
   context,
-  document,
+  drawing,
   preview = null,
 ) => {
+  let surface = artworkSurfaces.get(context);
+  if (!surface) {
+    surface = document.createElement("canvas");
+    artworkSurfaces.set(context, surface);
+  }
+  surface.width = context.canvas.width;
+  surface.height = context.canvas.height;
+  const ink = surface.getContext("2d")!;
+  ink.scale(surface.width / drawing.width, surface.height / drawing.height);
   context.save();
   try {
     context.resetTransform();
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     context.scale(
-      context.canvas.width / document.width,
-      context.canvas.height / document.height,
+      context.canvas.width / drawing.width,
+      context.canvas.height / drawing.height,
     );
-    context.fillStyle = document.background;
-    context.fillRect(0, 0, document.width, document.height);
-    for (const command of document.commands) command.render(context);
-    preview?.render(context);
+    context.fillStyle = drawing.background;
+    context.fillRect(0, 0, drawing.width, drawing.height);
+    for (const command of drawing.commands) {
+      if (command.kind === "decoration" && command.slot !== "border") {
+        command.render(context);
+      } else if (command.kind !== "decoration") command.render(ink);
+    }
+    preview?.render(ink);
+    context.save();
+    context.resetTransform();
+    context.drawImage(surface, 0, 0);
+    context.restore();
+    for (const command of drawing.commands) {
+      if (command.kind === "decoration" && command.slot === "border") {
+        command.render(context);
+      }
+    }
   } finally {
     context.restore();
   }

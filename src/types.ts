@@ -31,11 +31,15 @@ export interface StickerTool extends ToolBase {
   readonly text: string;
   readonly size: number;
   readonly category?: "text" | "emoji";
+  readonly color?: string;
+  readonly fontFamily?: string;
+  readonly align?: "left" | "center";
 }
 
 export type ToolDefinition = MarkerTool | EraserTool | StickerTool | ImageTool;
 
 interface ReplayableCommand {
+  readonly rotation?: number;
   // Use the supplied context; never capture the interactive canvas context.
   render(context: CanvasRenderingContext2D): void;
 }
@@ -45,6 +49,7 @@ export interface StrokeCommand extends ReplayableCommand {
   readonly points: readonly Point[];
   readonly color: string;
   readonly width: number;
+  readonly erase?: boolean;
 }
 
 export interface StickerCommand extends ReplayableCommand {
@@ -52,6 +57,9 @@ export interface StickerCommand extends ReplayableCommand {
   readonly position: Point;
   readonly text: string;
   readonly size: number;
+  readonly color?: string;
+  readonly fontFamily?: string;
+  readonly align?: "left" | "center";
 }
 
 export interface ImageCommand extends ReplayableCommand {
@@ -62,7 +70,17 @@ export interface ImageCommand extends ReplayableCommand {
   readonly height: number;
 }
 
-export type DrawingCommand = StrokeCommand | StickerCommand | ImageCommand;
+export interface DecorationCommand extends ReplayableCommand {
+  readonly kind: "decoration";
+  readonly slot: "background" | "border" | "layout";
+  readonly style: string;
+}
+
+export type DrawingCommand =
+  | StrokeCommand
+  | StickerCommand
+  | ImageCommand
+  | DecorationCommand;
 
 export interface DocumentSettings {
   readonly width: number;
@@ -108,6 +126,7 @@ export interface HistoryState {
 export interface HistoryStore {
   getState(): HistoryState;
   commit(command: DrawingCommand): void;
+  replace(commands: readonly DrawingCommand[]): void;
   clear(): void;
   undo(): void;
   redo(): void;
