@@ -21,7 +21,7 @@ Reloading resets the session. Export before closing if you want to keep the fini
 
 ## Development and design
 
-Run `deno task dev` for Vite or `deno task ci` for formatting, lint, type checks, and a production build. The existing GitHub Pages workflow deploys pushes to `main`.
+Use **Deno 2.9.7**, matching the deployment workflow and `.tool-versions`; older Deno formatters can produce CSS that CI rejects. Run `deno task dev` for Vite or `deno task ci` for formatting, lint, type checks, and a production build. The existing GitHub Pages workflow deploys pushes to `main`.
 
 `types.ts` defines meaningful commands and tools. `core.ts` retains history, creates immutable drawing commands, and replays them into the supplied context. Paper/layout render below a transparent artwork surface; eraser commands remove artwork from that surface; borders render above it. The same path handles interactive redraw and higher-resolution export.
 
