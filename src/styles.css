@@ -1041,3 +1041,16 @@ canvas {
 .template-tiles button[aria-pressed="true"] {
   box-shadow: 0 0 0 1px var(--rose);
 }
+.add-emoji-tile {
+  font-size: 26px;
+  color: var(--ink-muted);
+  border-style: dashed;
+}
+.palette-items > .emoji-form {
+  flex: 1 0 100%;
+  max-width: 100%;
+  margin-top: 3px;
+}
+.palette-items > .emoji-form input {
+  min-width: 0;
+}

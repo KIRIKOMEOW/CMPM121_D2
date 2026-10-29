@@ -12,6 +12,10 @@ export const PAPER_STYLES = [
   "Linen",
   "Pressed leaves",
   "Vintage grain",
+  "Cat silhouette · left",
+  "Dog silhouette · right",
+  "Fern silhouette · left",
+  "Ginkgo silhouette · right",
 ];
 export const BORDER_STYLES = ["None", "Airmail", "Double ink", "Garden"];
 export const LAYOUT_STYLES = [
@@ -50,6 +54,124 @@ export function decoration(
           };
           ctx.fillStyle = colors[style] ?? "#ffffff";
           ctx.fillRect(0, 0, 800, 600);
+          if (style.includes("silhouette")) {
+            ctx.save();
+            const left = style.includes("left");
+            ctx.translate(left ? 190 : 610, 350);
+            ctx.strokeStyle = "rgba(98,126,111,.15)";
+            ctx.fillStyle = "rgba(98,126,111,.075)";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            if (style.startsWith("Cat")) {
+              ctx.moveTo(-68, -62);
+              ctx.lineTo(-76, -143);
+              ctx.lineTo(-24, -109);
+              ctx.quadraticCurveTo(6, -120, 37, -105);
+              ctx.lineTo(88, -142);
+              ctx.lineTo(76, -56);
+              ctx.bezierCurveTo(112, 23, 58, 46, 48, 71);
+              ctx.bezierCurveTo(110, 120, 91, 196, 35, 211);
+              ctx.bezierCurveTo(-51, 234, -120, 184, -96, 108);
+              ctx.quadraticCurveTo(-71, 65, -47, 57);
+              ctx.bezierCurveTo(-115, 40, -120, -26, -68, -62);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(45, 182);
+              ctx.bezierCurveTo(172, 235, 163, 99, 119, 130);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(-57, -22);
+              ctx.lineTo(-34, -18);
+              ctx.moveTo(30, -18);
+              ctx.lineTo(52, -23);
+              ctx.moveTo(-10, 0);
+              ctx.lineTo(2, 7);
+              ctx.lineTo(13, 0);
+              ctx.stroke();
+            } else if (style.startsWith("Dog")) {
+              ctx.moveTo(-63, -87);
+              ctx.bezierCurveTo(-112, -120, -144, -52, -102, -7);
+              ctx.lineTo(-70, -45);
+              ctx.bezierCurveTo(-80, 30, -42, 56, -41, 67);
+              ctx.bezierCurveTo(-104, 129, -72, 204, -14, 211);
+              ctx.bezierCurveTo(77, 225, 116, 171, 79, 104);
+              ctx.lineTo(44, 63);
+              ctx.bezierCurveTo(95, 44, 107, 9, 75, -48);
+              ctx.bezierCurveTo(124, -20, 131, -96, 92, -108);
+              ctx.lineTo(51, -85);
+              ctx.quadraticCurveTo(-7, -120, -63, -87);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(68, 172);
+              ctx.quadraticCurveTo(150, 145, 123, 98);
+              ctx.moveTo(-39, -29);
+              ctx.lineTo(-30, -29);
+              ctx.moveTo(31, -29);
+              ctx.lineTo(40, -29);
+              ctx.moveTo(-6, -7);
+              ctx.lineTo(9, -7);
+              ctx.lineTo(1, 4);
+              ctx.closePath();
+              ctx.stroke();
+            } else if (style.startsWith("Fern")) {
+              ctx.moveTo(0, 220);
+              ctx.bezierCurveTo(-19, 72, -10, -82, 38, -180);
+              ctx.stroke();
+              for (let i = 0; i < 9; i++) {
+                const y = 170 - i * 38, w = 83 - i * 6;
+                ctx.beginPath();
+                ctx.moveTo(-2, y);
+                ctx.bezierCurveTo(-w, y - 4, -w - 14, y - 47, -w - 5, y - 55);
+                ctx.quadraticCurveTo(-24, y - 44, -2, y);
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, y - 8);
+                ctx.bezierCurveTo(w, y - 13, w + 10, y - 65, w, y - 70);
+                ctx.quadraticCurveTo(22, y - 46, 0, y - 8);
+                ctx.fill();
+                ctx.stroke();
+              }
+            } else {
+              ctx.moveTo(0, 219);
+              ctx.lineTo(0, 16);
+              ctx.lineTo(-72, -40);
+              ctx.moveTo(0, 77);
+              ctx.lineTo(80, 18);
+              ctx.stroke();
+              for (
+                const [x, y, flip] of [[-72, -40, -1], [80, 18, 1], [
+                  0,
+                  -100,
+                  1,
+                ]]
+              ) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.scale(flip, 1);
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(-34, -50, -97, -65, -83, -123);
+                ctx.quadraticCurveTo(-34, -155, 0, -100);
+                ctx.quadraticCurveTo(37, -155, 85, -123);
+                ctx.bezierCurveTo(102, -64, 35, -50, 0, 0);
+                ctx.fill();
+                ctx.stroke();
+                for (let j = -3; j <= 3; j++) {
+                  ctx.beginPath();
+                  ctx.moveTo(0, 0);
+                  ctx.lineTo(j * 21, -119);
+                  ctx.stroke();
+                }
+                ctx.restore();
+              }
+            }
+            ctx.restore();
+          }
           if (style.includes("dots")) {
             ctx.fillStyle = style === "Pink dots" ? "#eeb9c5" : "#a7cce3";
             for (let y = 16; y < 600; y += 28) {
@@ -378,8 +500,11 @@ export function templatePreview(
     ctx.translate(-40, -28);
     decoration(slot, style, "123456").render(ctx);
   } else {
-    // Show a close paper swatch, rather than shrinking the entire sheet.
-    ctx.scale(1.3, 1.3);
+    // Show a close paper swatch, or a whole single-motif composition.
+    ctx.scale(
+      style.includes("silhouette") ? 0.2 : 1.3,
+      style.includes("silhouette") ? 0.2 : 1.3,
+    );
     decoration(slot, style).render(ctx);
     if (["Rice paper", "Linen", "Vintage grain"].includes(style)) {
       ctx.strokeStyle = style === "Vintage grain"

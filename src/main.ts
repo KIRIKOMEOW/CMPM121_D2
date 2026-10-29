@@ -449,9 +449,6 @@ export function mountSketchpad(
     palette.prepend(textGroup);
     const brushGroup = palette.querySelector('[aria-label="Brushes"]');
     brushGroup?.querySelector("h3")?.after(settings);
-    const emojiHeading = palette.querySelector(
-      '[aria-label="Emoji & stamps"] h3',
-    );
     const brushHeading = palette.querySelector('[aria-label="Brushes"] h3');
     function plus(heading: Element | null, label: string, action: () => void) {
       const button = document.createElement("button");
@@ -462,10 +459,22 @@ export function mountSketchpad(
       button.addEventListener("click", action);
       heading?.append(button);
     }
-    plus(emojiHeading, "Add emoji", () => {
+    const emojiItems = palette.querySelector(
+      '[aria-label="Emoji & stamps"] .palette-items',
+    );
+    const addEmoji = document.createElement("button");
+    addEmoji.type = "button";
+    addEmoji.className = "palette-tool add-emoji-tile";
+    addEmoji.textContent = "+";
+    addEmoji.title = "Add emoji";
+    addEmoji.setAttribute("aria-label", "Add emoji");
+    addEmoji.setAttribute("aria-expanded", String(!emojiForm.hidden));
+    addEmoji.addEventListener("click", () => {
       emojiForm.hidden = !emojiForm.hidden;
+      addEmoji.setAttribute("aria-expanded", String(!emojiForm.hidden));
       if (!emojiForm.hidden) emojiInput.focus();
     });
+    emojiItems?.append(addEmoji, emojiForm);
     plus(brushHeading, "Save brush preset", saveBrush);
   }
 
@@ -652,7 +661,7 @@ export function mountSketchpad(
   emojiAdd.textContent = "+";
   emojiAdd.setAttribute("aria-label", "Save emoji");
   emojiForm.append(emojiInput, emojiAdd);
-  sidebar.append(emojiForm);
+
   function saveEmoji(event: SubmitEvent): void {
     event.preventDefault();
     const text = emojiInput.value.trim();
